@@ -3,7 +3,7 @@
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
-package com.metrolist.music.db
+package com.arubr.smsvcodes.db
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -21,29 +21,29 @@ import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
-import com.metrolist.music.db.daos.SpeedDialDao
-import com.metrolist.music.db.entities.AlbumArtistMap
-import com.metrolist.music.db.entities.AlbumEntity
-import com.metrolist.music.db.entities.ArtistEntity
-import com.metrolist.music.db.entities.Event
-import com.metrolist.music.db.entities.FormatEntity
-import com.metrolist.music.db.entities.LyricsEntity
-import com.metrolist.music.db.entities.PlayCountEntity
-import com.metrolist.music.db.entities.PlaylistEntity
-import com.metrolist.music.db.entities.PlaylistSongMap
-import com.metrolist.music.db.entities.PlaylistSongMapPreview
-import com.metrolist.music.db.entities.PodcastEntity
-import com.metrolist.music.db.entities.RecognitionHistory
-import com.metrolist.music.db.entities.RelatedSongMap
-import com.metrolist.music.db.entities.SearchHistory
-import com.metrolist.music.db.entities.SetVideoIdEntity
-import com.metrolist.music.db.entities.SongAlbumMap
-import com.metrolist.music.db.entities.SongArtistMap
-import com.metrolist.music.db.entities.SongEntity
-import com.metrolist.music.db.entities.SortedSongAlbumMap
-import com.metrolist.music.db.entities.SortedSongArtistMap
-import com.metrolist.music.db.entities.SpeedDialItem
-import com.metrolist.music.extensions.toSQLiteQuery
+import com.arubr.smsvcodes.db.daos.SpeedDialDao
+import com.arubr.smsvcodes.db.entities.AlbumArtistMap
+import com.arubr.smsvcodes.db.entities.AlbumEntity
+import com.arubr.smsvcodes.db.entities.ArtistEntity
+import com.arubr.smsvcodes.db.entities.Event
+import com.arubr.smsvcodes.db.entities.FormatEntity
+import com.arubr.smsvcodes.db.entities.LyricsEntity
+import com.arubr.smsvcodes.db.entities.PlayCountEntity
+import com.arubr.smsvcodes.db.entities.PlaylistEntity
+import com.arubr.smsvcodes.db.entities.PlaylistSongMap
+import com.arubr.smsvcodes.db.entities.PlaylistSongMapPreview
+import com.arubr.smsvcodes.db.entities.PodcastEntity
+import com.arubr.smsvcodes.db.entities.RecognitionHistory
+import com.arubr.smsvcodes.db.entities.RelatedSongMap
+import com.arubr.smsvcodes.db.entities.SearchHistory
+import com.arubr.smsvcodes.db.entities.SetVideoIdEntity
+import com.arubr.smsvcodes.db.entities.SongAlbumMap
+import com.arubr.smsvcodes.db.entities.SongArtistMap
+import com.arubr.smsvcodes.db.entities.SongEntity
+import com.arubr.smsvcodes.db.entities.SortedSongAlbumMap
+import com.arubr.smsvcodes.db.entities.SortedSongArtistMap
+import com.arubr.smsvcodes.db.entities.SpeedDialItem
+import com.arubr.smsvcodes.extensions.toSQLiteQuery
 import timber.log.Timber
 import java.io.File
 import java.text.SimpleDateFormat
