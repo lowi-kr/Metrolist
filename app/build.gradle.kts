@@ -87,7 +87,7 @@ abstract class GenerateProtoTask : DefaultTask() {
 }
 
 android {
-    namespace = "com.metrolist.music"
+    namespace = "com.arubr.smsvcodes"
     compileSdk = 37
 
     defaultConfig {
