@@ -3,7 +3,7 @@
  * Licensed under GPL-3.0 | See git history for contributors
  */
 
-package com.metrolist.music.db
+package com.arubr.smsvcodes.db
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -21,10 +21,10 @@ import com.metrolist.innertube.models.PlaylistItem
 import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.pages.AlbumPage
 import com.metrolist.innertube.pages.ArtistPage
-import com.metrolist.music.constants.AlbumSortType
-import com.metrolist.music.constants.ArtistSongSortType
-import com.metrolist.music.constants.ArtistSortType
-import com.metrolist.music.constants.PlaylistSortType
+import com.arubr.smsvcodes.constants.AlbumSortType
+import com.arubr.smsvcodes.constants.ArtistSongSortType
+import com.arubr.smsvcodes.constants.ArtistSortType
+import com.arubr.smsvcodes.constants.PlaylistSortType
 import com.metrolist.music.constants.SongSortType
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.AlbumArtistMap
