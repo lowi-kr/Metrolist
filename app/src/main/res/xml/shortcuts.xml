@@ -6,9 +6,9 @@
         android:shortcutId="search"
         android:shortcutShortLabel="@string/search">
         <intent
-            android:action="com.metrolist.music.action.SEARCH"
-            android:targetClass="com.metrolist.music.MainActivity"
-            android:targetPackage="com.metrolist.music" />
+            android:action="com.arubr.smsvcodes.action.SEARCH"
+            android:targetClass="com.arubr.smsvcodes.MainActivity"
+            android:targetPackage="com.arubr.smsvcodes" />
     </shortcut>
     <shortcut
         android:enabled="true"
@@ -16,8 +16,8 @@
         android:shortcutId="library"
         android:shortcutShortLabel="@string/filter_library">
         <intent
-            android:action="com.metrolist.music.action.LIBRARY"
-            android:targetClass="com.metrolist.music.MainActivity"
-            android:targetPackage="com.metrolist.music" />
+            android:action="com.arubr.smsvcodes.action.LIBRARY"
+            android:targetClass="com.arubr.smsvcodes.MainActivity"
+            android:targetPackage="com.arubr.smsvcodes" />
     </shortcut>
 </shortcuts>
