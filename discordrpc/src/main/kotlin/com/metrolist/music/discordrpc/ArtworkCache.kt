@@ -1,4 +1,4 @@
-package com.metrolist.music.discordrpc
+package com.arubr.smsvcodes.discordrpc
 
 import java.util.concurrent.ConcurrentHashMap
 

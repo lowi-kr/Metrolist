@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.metrolist.music.discordrpc"
+    namespace = "com.arubr.smsvcodes.discordrpc"
     compileSdk = 37
 
     defaultConfig {

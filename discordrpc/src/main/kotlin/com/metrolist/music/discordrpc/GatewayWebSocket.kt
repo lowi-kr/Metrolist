@@ -1,14 +1,14 @@
-package com.metrolist.music.discordrpc
+package com.arubr.smsvcodes.discordrpc
 
-import com.metrolist.music.discordrpc.entities.ClientState
-import com.metrolist.music.discordrpc.entities.HeartbeatResponse
-import com.metrolist.music.discordrpc.entities.Identify
-import com.metrolist.music.discordrpc.entities.IdentifyProperties
-import com.metrolist.music.discordrpc.entities.OpCode
-import com.metrolist.music.discordrpc.entities.Payload
-import com.metrolist.music.discordrpc.entities.Presence
-import com.metrolist.music.discordrpc.entities.Ready
-import com.metrolist.music.discordrpc.entities.Resume
+import com.arubr.smsvcodes.discordrpc.entities.ClientState
+import com.arubr.smsvcodes.discordrpc.entities.HeartbeatResponse
+import com.arubr.smsvcodes.discordrpc.entities.Identify
+import com.arubr.smsvcodes.discordrpc.entities.IdentifyProperties
+import com.arubr.smsvcodes.discordrpc.entities.OpCode
+import com.arubr.smsvcodes.discordrpc.entities.Payload
+import com.arubr.smsvcodes.discordrpc.entities.Presence
+import com.arubr.smsvcodes.discordrpc.entities.Ready
+import com.arubr.smsvcodes.discordrpc.entities.Resume
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.WebSockets

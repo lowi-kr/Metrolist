@@ -1,4 +1,4 @@
-package com.metrolist.music.discordrpc
+package com.arubr.smsvcodes.discordrpc
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body

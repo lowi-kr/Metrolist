@@ -1,4 +1,4 @@
-package com.metrolist.music.discordrpc
+package com.arubr.smsvcodes.discordrpc
 
 import android.os.Build
 import android.util.Base64

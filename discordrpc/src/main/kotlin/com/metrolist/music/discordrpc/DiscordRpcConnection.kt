@@ -1,11 +1,11 @@
-package com.metrolist.music.discordrpc
+package com.arubr.smsvcodes.discordrpc
 
-import com.metrolist.music.discordrpc.entities.Activity
-import com.metrolist.music.discordrpc.entities.Assets
-import com.metrolist.music.discordrpc.entities.Button
-import com.metrolist.music.discordrpc.entities.Metadata
-import com.metrolist.music.discordrpc.entities.Timestamps
-import com.metrolist.music.discordrpc.entities.Presence
+import com.arubr.smsvcodes.discordrpc.entities.Activity
+import com.arubr.smsvcodes.discordrpc.entities.Assets
+import com.arubr.smsvcodes.discordrpc.entities.Button
+import com.arubr.smsvcodes.discordrpc.entities.Metadata
+import com.arubr.smsvcodes.discordrpc.entities.Timestamps
+import com.arubr.smsvcodes.discordrpc.entities.Presence
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get

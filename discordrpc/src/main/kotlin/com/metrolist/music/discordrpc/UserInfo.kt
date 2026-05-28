@@ -1,4 +1,4 @@
-package com.metrolist.music.discordrpc
+package com.arubr.smsvcodes.discordrpc
 
 data class UserInfo(
     val id: String,

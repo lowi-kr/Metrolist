@@ -1,7 +1,7 @@
 package com.metrolist.paxsenix
 
 import android.content.Context
-import com.metrolist.music.betterlyrics.TTMLParser
+import com.arubr.smsvcodes.betterlyrics.TTMLParser
 import com.metrolist.paxsenix.models.AppleMusicSearchResponse
 import com.metrolist.paxsenix.models.LyricsResponse
 

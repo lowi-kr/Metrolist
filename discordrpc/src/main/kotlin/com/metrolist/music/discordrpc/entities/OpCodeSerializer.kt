@@ -1,4 +1,4 @@
-package com.metrolist.music.discordrpc.entities
+package com.arubr.smsvcodes.discordrpc.entities
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
