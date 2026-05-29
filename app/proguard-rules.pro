@@ -209,3 +209,7 @@
 -keepclasseswithmembers class com.metrolist.shazamkit.models.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
+
+## R8 Validation Fix
+-dontwarn kotlin.reflect.jvm.internal.**
+-keep class kotlin.reflect.jvm.internal.** { *; }
