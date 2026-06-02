@@ -5,6 +5,7 @@
 
 package com.arubr.smsvcodes.ui.screens.library
 
+import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.widget.Toast
@@ -13,19 +14,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -33,7 +30,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -42,7 +38,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -58,7 +53,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.core.content.FileProvider
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.metrolist.innertube.YouTube
@@ -87,14 +84,14 @@ import com.arubr.smsvcodes.ui.component.LocalMenuState
 import com.arubr.smsvcodes.ui.component.SongListItem
 import com.arubr.smsvcodes.ui.component.SortHeader
 import com.arubr.smsvcodes.ui.menu.SongMenu
-import com.arubr.smsvcodes.ui.utils.isScrollingUp
 import com.arubr.smsvcodes.utils.rememberEnumPreference
 import com.arubr.smsvcodes.utils.rememberPreference
 import com.arubr.smsvcodes.viewmodels.LibrarySongsViewModel
-import timber.log.Timber
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
+import java.io.File
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -143,6 +140,49 @@ fun LibrarySongsScreen(
     var isUploading by remember { mutableStateOf(false) }
     var uploadJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
+    // Export function
+    val exportSong: (String, String) -> Unit = { songId, songTitle ->
+        scope.launch(Dispatchers.IO) {
+            try {
+                val downloadDir = context.filesDir.resolve("download")
+                val cacheFile = downloadDir.walkTopDown().firstOrNull { file ->
+                    file.isFile && file.nameWithoutExtension == songId
+                }
+
+                if (cacheFile == null) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Export failed: file not found", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+
+                val safeTitle = songTitle.replace(Regex("[^a-zA-Z0-9._\\- ]"), "_")
+                val exportFile = File(context.getExternalFilesDir(null), "$safeTitle.${cacheFile.extension}")
+                cacheFile.copyTo(exportFile, overwrite = true)
+
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    exportFile
+                )
+
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "audio/*"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+
+                withContext(Dispatchers.Main) {
+                    context.startActivity(Intent.createChooser(intent, "Export $songTitle"))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     val filePickerLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.OpenMultipleDocuments(),
@@ -168,7 +208,6 @@ fun LibrarySongsScreen(
                             uploadProgress = 0f
 
                             try {
-                                // Get actual display name from content resolver
                                 var fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "unknown"
                                 context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
                                     if (cursor.moveToFirst()) {
@@ -186,12 +225,7 @@ fun LibrarySongsScreen(
 
                                 if (extension !in YouTube.SUPPORTED_UPLOAD_TYPES) {
                                     withContext(Dispatchers.Main) {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                uploadUnsupportedFormatStr,
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
+                                        Toast.makeText(context, uploadUnsupportedFormatStr, Toast.LENGTH_SHORT).show()
                                     }
                                     return@forEachIndexed
                                 }
@@ -204,12 +238,7 @@ fun LibrarySongsScreen(
 
                                 if (data.size > YouTube.MAX_UPLOAD_SIZE) {
                                     withContext(Dispatchers.Main) {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                uploadFileTooLargeStr,
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
+                                        Toast.makeText(context, uploadFileTooLargeStr, Toast.LENGTH_SHORT).show()
                                     }
                                     return@forEachIndexed
                                 }
@@ -228,12 +257,7 @@ fun LibrarySongsScreen(
                                 }
                             } catch (e: Exception) {
                                 withContext(Dispatchers.Main) {
-                                    Toast
-                                        .makeText(
-                                            context,
-                                            uploadFailedStr + ": ${e.message}",
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
+                                    Toast.makeText(context, uploadFailedStr + ": ${e.message}", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
@@ -241,24 +265,13 @@ fun LibrarySongsScreen(
                         isUploading = false
 
                         if (successCount > 0) {
-                            // Show completion briefly
                             uploadProgress = 1f
                             currentFileName = uploadCompleteStr
                             kotlinx.coroutines.delay(1000)
-
-                            // Show toast on main thread
                             withContext(Dispatchers.Main) {
-                                Toast
-                                    .makeText(
-                                        context,
-                                        uploadCompleteStr,
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
+                                Toast.makeText(context, uploadCompleteStr, Toast.LENGTH_SHORT).show()
                             }
-
                             showUploadDialog = false
-
-                            // Refresh uploaded songs
                             viewModel.syncUploadedSongs()
                         } else {
                             showUploadDialog = false
@@ -470,21 +483,32 @@ fun LibrarySongsScreen(
                     showLikedIcon = true,
                     showDownloadIcon = filter != SongFilter.DOWNLOADED,
                     trailingContent = {
-                        IconButton(
-                            onClick = {
-                                menuState.show {
-                                    SongMenu(
-                                        originalSong = song,
-                                        navController = navController,
-                                        onDismiss = menuState::dismiss,
-                                    )
-                                }
-                            },
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.more_vert),
-                                contentDescription = null,
-                            )
+                        if (filter == SongFilter.DOWNLOADED) {
+                            IconButton(
+                                onClick = { exportSong(song.song.id, song.song.title) }
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.share),
+                                    contentDescription = "Export",
+                                )
+                            }
+                        } else {
+                            IconButton(
+                                onClick = {
+                                    menuState.show {
+                                        SongMenu(
+                                            originalSong = song,
+                                            navController = navController,
+                                            onDismiss = menuState::dismiss,
+                                        )
+                                    }
+                                },
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.more_vert),
+                                    contentDescription = null,
+                                )
+                            }
                         }
                     },
                     modifier =
@@ -507,7 +531,6 @@ fun LibrarySongsScreen(
             }
         }
 
-        // Show upload FAB when on UPLOADED filter, shuffle FAB otherwise
         HideOnScrollFAB(
             visible = if (filter == SongFilter.UPLOADED) true else filteredSongs.isNotEmpty(),
             lazyListState = lazyListState,
