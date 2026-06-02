@@ -85,6 +85,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -92,6 +93,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.window.Dialog
@@ -188,6 +190,7 @@ import com.metrolist.music.ui.utils.appBarScrollBehavior
 import com.metrolist.music.ui.utils.resetHeightOffset
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.Updater
+import com.metrolist.music.discord.DiscordSdkHelper
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.get
 import com.metrolist.music.utils.rememberEnumPreference
@@ -349,6 +352,10 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         if (isFinishing) {
             listenTogetherManager.disconnect()
+            try {
+                DiscordSdkHelper.setEngineActivity(null)
+            } catch (_: Exception) {
+            }
         }
         super.onDestroy()
         // Use effective playing state so Cast (local player paused, remote playing) is included.
@@ -389,6 +396,8 @@ class MainActivity : ComponentActivity() {
 
         // Initialize Listen Together manager
         listenTogetherManager.initialize()
+        // Initialize Discord Social SDK engine activity
+        DiscordSdkHelper.setEngineActivity(this)
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             val locale =
@@ -641,6 +650,26 @@ class MainActivity : ComponentActivity() {
             pureBlack = pureBlack,
             themeColor = themeColor,
         ) {
+            val currentDensity = LocalDensity.current
+            val windowInfo = LocalWindowInfo.current
+            val containerWidthDp = windowInfo.containerDpSize.width
+
+            val densityScale = remember(containerWidthDp) {
+                when {
+                    containerWidthDp >= 840.dp -> 1.25f
+                    containerWidthDp >= 720.dp -> 1.15f
+                    containerWidthDp >= 600.dp -> 1.1f
+                    else -> 1.0f
+                }
+            }
+            val scaledDensity: Density = remember(currentDensity, densityScale) {
+                Density(
+                    density = currentDensity.density * densityScale,
+                    fontScale = currentDensity.fontScale,
+                )
+            }
+
+            CompositionLocalProvider(LocalDensity provides scaledDensity) {
             BoxWithConstraints(
                 modifier =
                     Modifier
@@ -756,8 +785,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                 val isLandscape = configuration.containerDpSize.width > configuration.containerDpSize.height
+                val isTablet = configuration.containerDpSize.width >= 600.dp
 
-                val showRail = isLandscape && !inSearchScreen
+                val showRail = (isLandscape || isTablet) && !inSearchScreen
 
                 val navPadding =
                     if (shouldShowNavigationBar && !showRail) {
@@ -1366,6 +1396,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+            }
             }
         }
     }
