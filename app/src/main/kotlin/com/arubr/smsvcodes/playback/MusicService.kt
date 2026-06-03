@@ -144,6 +144,7 @@ import com.arubr.smsvcodes.constants.SimilarContent
 import com.arubr.smsvcodes.constants.SkipSilenceInstantKey
 import com.arubr.smsvcodes.constants.SkipSilenceKey
 import com.arubr.smsvcodes.constants.StopMusicOnTaskClearKey
+import com.arubr.smsvcodes.constants.VideoPlaybackKey
 import com.arubr.smsvcodes.db.MusicDatabase
 import com.arubr.smsvcodes.db.entities.Event
 import com.arubr.smsvcodes.db.entities.FormatEntity
@@ -3349,7 +3350,16 @@ class MusicService :
                     Timber.tag("MusicService").d("Cleared bypass cache flag for $mediaId after fresh fetch")
                 }
 
-                val streamUrl = nonNullPlayback.streamUrl
+                val isVideoPlaybackEnabled = dataStore.get(VideoPlaybackKey, false)
+
+                // videoStreamUrl is non-null only for music videos (tracks whose PlayerResponse
+                // contains muxed MP4 formats). It is null for audio-only tracks and lyric videos.
+                val streamUrl = if (isVideoPlaybackEnabled && nonNullPlayback.videoStreamUrl != null) {
+                    Timber.tag(TAG).d("Using muxed video stream for $mediaId")
+                    nonNullPlayback.videoStreamUrl
+                } else {
+                    nonNullPlayback.streamUrl
+                }
 
                 songUrlCache[mediaId] =
                     streamUrl to System.currentTimeMillis() + (nonNullPlayback.streamExpiresInSeconds * 1000L)

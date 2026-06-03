@@ -66,6 +66,7 @@ import com.arubr.smsvcodes.constants.SimilarContent
 import com.arubr.smsvcodes.constants.SkipSilenceInstantKey
 import com.arubr.smsvcodes.constants.SkipSilenceKey
 import com.arubr.smsvcodes.constants.StopMusicOnTaskClearKey
+import com.arubr.smsvcodes.constants.VideoPlaybackKey
 import com.arubr.smsvcodes.constants.VarispeedKey
 import com.arubr.smsvcodes.ui.component.DefaultDialog
 import com.arubr.smsvcodes.ui.component.EnumDialog
@@ -212,6 +213,10 @@ fun PlayerSettings(
         HistoryDuration,
         defaultValue = 30f
     )
+    val (videoPlaybackEnabled, onVideoPlaybackEnabledChange) = rememberPreference(
+        VideoPlaybackKey,
+        defaultValue = false
+    )
 
     var showAudioQualityDialog by remember {
         mutableStateOf(false)
@@ -313,6 +318,27 @@ fun PlayerSettings(
                         )
                     },
                     onClick = { showAudioQualityDialog = true }
+                ))
+                add(Material3SettingsItem(
+                    icon = painterResource(R.drawable.play_circle),
+                    title = { Text(stringResource(R.string.video_playback)) },
+                    description = { Text(stringResource(R.string.video_playback_description)) },
+                    trailingContent = {
+                        Switch(
+                            checked = videoPlaybackEnabled,
+                            onCheckedChange = onVideoPlaybackEnabledChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (videoPlaybackEnabled) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onVideoPlaybackEnabledChange(!videoPlaybackEnabled) }
                 ))
                 add(Material3SettingsItem(
                     icon = painterResource(R.drawable.linear_scale),

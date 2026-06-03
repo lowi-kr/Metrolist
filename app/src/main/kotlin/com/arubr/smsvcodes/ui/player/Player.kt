@@ -387,6 +387,18 @@ fun BottomSheetPlayer(
     // Track when we last manually set position to avoid Cast overwriting it
     var lastManualSeekTime by remember { mutableLongStateOf(0L) }
 
+    // ── Video playback ────────────────────────────────────────────────────────
+    val videoPlaybackEnabled by rememberPreference(VideoPlaybackKey, defaultValue = false)
+
+    // ExoPlayer sets videoSize to a non-zero value only when it is actively
+    // rendering video frames. We re-read it whenever playbackState changes
+    // (which fires on every track transition) so Compose reacts to it.
+    val videoSize by remember(playbackState, mediaMetadata?.id) {
+        derivedStateOf { playerConnection.player.videoSize }
+    }
+    val isVideoActive = videoPlaybackEnabled && videoSize.width > 0 && videoSize.height > 0
+    // ─────────────────────────────────────────────────────────────────────────
+
     var gradientColors by remember {
         mutableStateOf<List<Color>>(emptyList())
     }
@@ -1842,6 +1854,10 @@ fun BottomSheetPlayer(
                                     showLyrics = showLyrics,
                                     positionProvider = { effectivePosition },
                                 )
+                            } else if (isVideoActive) {
+                                VideoPlayerSurface(
+                                    modifier = Modifier.animateContentSize(),
+                                )
                             } else {
                                 Thumbnail(
                                     sliderPositionProvider = sliderPositionProvider,
@@ -1904,6 +1920,10 @@ fun BottomSheetPlayer(
                                     mediaMetadata = mediaMetadata,
                                     showLyrics = showLyrics,
                                     positionProvider = { effectivePosition },
+                                )
+                            } else if (isVideoActive) {
+                                VideoPlayerSurface(
+                                    modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
                                 )
                             } else {
                                 Thumbnail(

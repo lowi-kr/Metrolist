@@ -59,14 +59,17 @@ object YTPlayerUtils {
         WEB,
         WEB_CREATOR
     )
+
     data class PlaybackData(
         val audioConfig: PlayerResponse.PlayerConfig.AudioConfig?,
         val videoDetails: PlayerResponse.VideoDetails?,
         val playbackTracking: PlayerResponse.PlaybackTracking?,
         val format: PlayerResponse.StreamingData.Format,
         val streamUrl: String,
+        val videoStreamUrl: String?,      // ← NEW: muxed video+audio URL, null for audio-only tracks
         val streamExpiresInSeconds: Int,
     )
+
     /**
      * Custom player response intended to use for playback.
      * Metadata like audioConfig and videoDetails are from [MAIN_CLIENT].
@@ -381,18 +384,27 @@ object YTPlayerUtils {
         if (isUploadedTrack) {
             println("[PLAYBACK_DEBUG] SUCCESS: Got playback data for uploaded track - format=${format.mimeType}, streamUrl=${streamUrl.take(100)}...")
         }
+
+        // Pick the best muxed video+audio stream URL from the successful client's response.
+        // This is separate from the audio-only streamUrl above — it comes from `formats`
+        // (progressive MP4) rather than `adaptiveFormats` (audio-only).
+        val videoStreamUrl = pickVideoStreamUrl(streamPlayerResponse.streamingData)
+        Timber.tag(TAG).d("videoStreamUrl available: ${videoStreamUrl != null}")
+
         PlaybackData(
             audioConfig,
             videoDetails,
             playbackTracking,
             format,
             streamUrl,
+            videoStreamUrl,
             streamExpiresInSeconds,
         )
     }.onFailure { e ->
         println("[PLAYBACK_DEBUG] EXCEPTION during playback for videoId=$videoId: ${e::class.simpleName}: ${e.message}")
         e.printStackTrace()
     }
+
     /**
      * Simple player response intended to use for metadata only.
      * Stream URLs of this response might not work so don't use them.
@@ -485,6 +497,7 @@ object YTPlayerUtils {
 
         return format
     }
+
     /**
      * Checks if the stream url returns a successful status.
      * If this returns true the url is likely to work.
@@ -513,6 +526,7 @@ object YTPlayerUtils {
         }
         return false
     }
+
     data class SignatureTimestampResult(
         val timestamp: Int?,
         val isAgeRestricted: Boolean
@@ -608,6 +622,35 @@ object YTPlayerUtils {
 
         Timber.tag(logTag).e("Failed to get stream URL")
         return null
+    }
+
+    /**
+     * Picks the best muxed (video + audio) stream URL from [streamingData].
+     *
+     * [PlayerResponse.StreamingData.formats] contains progressive MP4 streams that
+     * carry both video and audio in a single file — exactly what ExoPlayer needs to
+     * render video without adaptive-streaming complexity.
+     *
+     * We prefer the highest quality at or below 720p to keep bandwidth reasonable.
+     * Returns null when:
+     *   • [streamingData] is null (track has no streaming data)
+     *   • `formats` is null or empty (audio-only content)
+     *   • no muxed MP4 with a direct URL exists (cipher-protected streams)
+     */
+    private fun pickVideoStreamUrl(
+        streamingData: PlayerResponse.StreamingData?,
+    ): String? {
+        val formats = streamingData?.formats ?: return null
+
+        val candidates = formats.filter { fmt ->
+            fmt.url != null &&
+                fmt.mimeType.startsWith("video/mp4") &&
+                fmt.height != null
+        }
+
+        // Prefer ≤ 720p; fall back to lowest available if everything is higher resolution
+        return (candidates.filter { it.height!! <= 720 }.maxByOrNull { it.height!! }
+            ?: candidates.minByOrNull { it.height!! })?.url
     }
 
     fun forceRefreshForVideo(videoId: String) {
