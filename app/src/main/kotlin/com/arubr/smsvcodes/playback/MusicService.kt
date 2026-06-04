@@ -69,6 +69,8 @@ import androidx.media3.exoplayer.analytics.PlaybackStatsListener
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.SilenceSkippingAudioProcessor
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MergingMediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.extractor.ExtractorsFactory
 import androidx.media3.extractor.mkv.MatroskaExtractor
@@ -436,6 +438,16 @@ class MusicService :
     private var cachedAutoLoadMore = true
 
     // URL cache for stream URLs - class-level so it can be invalidated on errors
+    // Stores the muxed video URL for OMV tracks when video playback is enabled.
+    // Keyed by mediaId, populated in createDataSourceFactory alongside songUrlCache.
+    private val videoUrlCache = Collections.synchronizedMap(
+        object : LinkedHashMap<String, String>(0, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>): Boolean {
+                return size > 100
+            }
+        },
+    )
+
     private val songUrlCache = Collections.synchronizedMap(
         object : LinkedHashMap<String, Pair<String, Long>>(0, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<String, Long>>): Boolean {
@@ -3350,31 +3362,75 @@ class MusicService :
                     Timber.tag("MusicService").d("Cleared bypass cache flag for $mediaId after fresh fetch")
                 }
 
-                val isVideoPlaybackEnabled = dataStore.get(VideoPlaybackKey, false)
-
-                // videoStreamUrl is non-null only for music videos (tracks whose PlayerResponse
-                // contains muxed MP4 formats). It is null for audio-only tracks and lyric videos.
-                val streamUrl = if (isVideoPlaybackEnabled && nonNullPlayback.videoStreamUrl != null) {
-                    Timber.tag(TAG).d("Using muxed video stream for $mediaId")
-                    nonNullPlayback.videoStreamUrl
-                } else {
-                    nonNullPlayback.streamUrl
-                }
+                // Always serve the audio-only stream through ResolvingDataSource.
+                // Video is handled separately via videoUrlCache + MergingMediaSource.
+                val streamUrl = nonNullPlayback.streamUrl
 
                 songUrlCache[mediaId] =
                     streamUrl to System.currentTimeMillis() + (nonNullPlayback.streamExpiresInSeconds * 1000L)
+
+                // Cache the video URL separately so createMediaSourceFactory can merge it.
+                val isVideoPlaybackEnabled = dataStore.get(VideoPlaybackKey, false)
+                val isMusicVideo = nonNullPlayback.videoDetails?.musicVideoType
+                    ?.equals("MUSIC_VIDEO_TYPE_OMV", ignoreCase = true) == true
+                if (isVideoPlaybackEnabled && isMusicVideo && nonNullPlayback.videoStreamUrl != null) {
+                    videoUrlCache[mediaId] = nonNullPlayback.videoStreamUrl
+                    Timber.tag(TAG).d("Cached video URL for $mediaId")
+                } else {
+                    videoUrlCache.remove(mediaId)
+                }
+
                 return@Factory dataSpec.withUri(streamUrl.toUri()).subrange(dataSpec.uriPositionOffset, CHUNK_LENGTH)
             }
         }
     }
 
-    private fun createMediaSourceFactory() =
-        DefaultMediaSourceFactory(
-            createDataSourceFactory(),
-            ExtractorsFactory {
-                arrayOf(MatroskaExtractor(), FragmentedMp4Extractor())
-            },
+    private fun createMediaSourceFactory(): androidx.media3.exoplayer.source.MediaSource.Factory {
+        val audioDataSourceFactory = createDataSourceFactory()
+
+        // OkHttp data source factory for direct video URL fetching (bypasses ResolvingDataSource).
+        val videoHttpFactory = OkHttpDataSource.Factory(
+            okhttp3.OkHttpClient.Builder().proxy(YouTube.proxy).build(),
         )
+        val videoDataSourceFactory = DefaultDataSource.Factory(this, videoHttpFactory)
+        val videoExtractorsFactory = ExtractorsFactory {
+            arrayOf(MatroskaExtractor(), FragmentedMp4Extractor())
+        }
+
+        val audioMediaSourceFactory = DefaultMediaSourceFactory(
+            audioDataSourceFactory,
+            ExtractorsFactory { arrayOf(MatroskaExtractor(), FragmentedMp4Extractor()) },
+        )
+
+        // Wrap in a custom factory that merges a video sidecar when available.
+        return object : androidx.media3.exoplayer.source.MediaSource.Factory {
+            override fun setDrmSessionManagerProvider(
+                drmSessionManagerProvider: androidx.media3.exoplayer.drm.DrmSessionManagerProvider,
+            ) = apply { audioMediaSourceFactory.setDrmSessionManagerProvider(drmSessionManagerProvider) }
+
+            override fun setLoadErrorHandlingPolicy(
+                loadErrorHandlingPolicy: androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy,
+            ) = apply { audioMediaSourceFactory.setLoadErrorHandlingPolicy(loadErrorHandlingPolicy) }
+
+            override fun getSupportedTypes() = audioMediaSourceFactory.supportedTypes
+
+            override fun createMediaSource(mediaItem: MediaItem): androidx.media3.exoplayer.source.MediaSource {
+                val audioSource = audioMediaSourceFactory.createMediaSource(mediaItem)
+                val videoUrl = videoUrlCache[mediaItem.mediaId] ?: return audioSource
+
+                Timber.tag(TAG).d("Merging video track for ${mediaItem.mediaId}")
+                val videoMediaItem = MediaItem.fromUri(videoUrl.toUri())
+                val videoSource = androidx.media3.exoplayer.source.ProgressiveMediaSource
+                    .Factory(videoDataSourceFactory, videoExtractorsFactory)
+                    .createMediaSource(videoMediaItem)
+
+                return androidx.media3.exoplayer.source.MergingMediaSource(
+                    audioSource,
+                    videoSource,
+                )
+            }
+        }
+    }
 
     private fun createRenderersFactory(
         eqProcessor: CustomEqualizerAudioProcessor,

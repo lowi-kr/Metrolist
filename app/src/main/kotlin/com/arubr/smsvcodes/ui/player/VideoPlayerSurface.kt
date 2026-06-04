@@ -1,7 +1,13 @@
+/**
+ * Metrolist Project (C) 2026
+ * Licensed under GPL-3.0 | See git history for contributors
+ */
+
 package com.arubr.smsvcodes.ui.player
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.view.SurfaceView
 import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,22 +37,19 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
 import com.arubr.smsvcodes.LocalPlayerConnection
 import com.arubr.smsvcodes.R
 
 /**
  * Embedded video surface for music-video playback.
  *
- * Shows the ExoPlayer video output in a 16:9 box. A fullscreen button in the
- * bottom-right corner forces landscape and hides the system bars; tapping it
- * again restores portrait and the bars.
+ * Renders ExoPlayer's video output inside a 16:9 box using a plain [SurfaceView]
+ * (no dependency on media3-ui's PlayerView). A fullscreen button in the
+ * bottom-right corner forces landscape and hides system bars; tapping again
+ * restores portrait.
  *
  * Drop-in replacement for the album-art [AsyncImage] inside [BottomSheetPlayer]
- * when [isVideoTrack] is true and the user has enabled video playback in settings.
- *
- * @param modifier Applied to the outermost [Box].
+ * when [isVideoActive] is true.
  */
 @Composable
 fun VideoPlayerSurface(modifier: Modifier = Modifier) {
@@ -56,7 +59,7 @@ fun VideoPlayerSurface(modifier: Modifier = Modifier) {
 
     var isLandscapeForced by remember { mutableStateOf(false) }
 
-    // Always restore orientation when this composable is removed from composition.
+    // Restore orientation when this composable leaves composition.
     DisposableEffect(Unit) {
         onDispose {
             if (isLandscapeForced) {
@@ -67,7 +70,6 @@ fun VideoPlayerSurface(modifier: Modifier = Modifier) {
                     ctl.show(WindowInsetsCompat.Type.statusBars())
                     ctl.show(WindowInsetsCompat.Type.navigationBars())
                 }
-                isLandscapeForced = false
             }
         }
     }
@@ -79,27 +81,30 @@ fun VideoPlayerSurface(modifier: Modifier = Modifier) {
             .aspectRatio(16f / 9f)
             .background(Color.Black),
     ) {
-        // ── Video surface ──────────────────────────────────────────────────────
+        // ── Video surface (SurfaceView — no media3-ui needed) ─────────────────
         AndroidView(
             factory = { ctx ->
-                PlayerView(ctx).apply {
-                    this.player = player
-                    useController = false                           // app draws its own transport controls
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                SurfaceView(ctx).apply {
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
+                    // Attach ExoPlayer's video output to this surface.
+                    player.setVideoSurfaceView(this)
                 }
             },
             update = { view ->
-                // Re-attach in case service was restarted and player instance changed.
-                if (view.player !== player) view.player = player
+                // Re-attach if the player instance changed (e.g. service restart).
+                player.setVideoSurfaceView(view)
+            },
+            onRelease = { _ ->
+                // Clear the surface so ExoPlayer doesn't hold a dead reference.
+                player.clearVideoSurface()
             },
             modifier = Modifier.fillMaxSize(),
         )
 
-        // ── Fullscreen toggle ──────────────────────────────────────────────────
+        // ── Fullscreen toggle ─────────────────────────────────────────────────
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
@@ -131,12 +136,12 @@ fun VideoPlayerSurface(modifier: Modifier = Modifier) {
                     }
                 },
         ) {
+            // R.drawable.fullscreen already exists in the project.
+            // Icon rotates 45° when in landscape to hint at "exit fullscreen".
             Icon(
-                painter = painterResource(
-                    if (isLandscapeForced) R.drawable.fullscreen_exit else R.drawable.fullscreen,
-                ),
+                painter = painterResource(R.drawable.fullscreen),
                 contentDescription = if (isLandscapeForced) "Exit fullscreen" else "Fullscreen",
-                tint = Color.White,
+                tint = if (isLandscapeForced) Color.Yellow else Color.White,
                 modifier = Modifier.size(20.dp),
             )
         }

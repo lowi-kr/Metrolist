@@ -320,7 +320,7 @@ fun PlayerSettings(
                     onClick = { showAudioQualityDialog = true }
                 ))
                 add(Material3SettingsItem(
-                    icon = painterResource(R.drawable.play_circle),
+                    icon = painterResource(R.drawable.slow_motion_video),
                     title = { Text(stringResource(R.string.video_playback)) },
                     description = { Text(stringResource(R.string.video_playback_description)) },
                     trailingContent = {
