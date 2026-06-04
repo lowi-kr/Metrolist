@@ -124,6 +124,8 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.Player.STATE_ENDED
+import com.arubr.smsvcodes.constants.VideoPlaybackKey
+import com.arubr.smsvcodes.ui.player.VideoPlayerSurface
 import androidx.navigation.NavController
 import androidx.palette.graphics.Palette
 import coil3.compose.AsyncImage
@@ -390,13 +392,12 @@ fun BottomSheetPlayer(
     // ── Video playback ────────────────────────────────────────────────────────
     val videoPlaybackEnabled by rememberPreference(VideoPlaybackKey, defaultValue = false)
 
-    // ExoPlayer sets videoSize to a non-zero value only when it is actively
-    // rendering video frames. We re-read it whenever playbackState changes
-    // (which fires on every track transition) so Compose reacts to it.
-    val videoSize by remember(playbackState, mediaMetadata?.id) {
-        derivedStateOf { playerConnection.player.videoSize }
-    }
-    val isVideoActive = videoPlaybackEnabled && videoSize.width > 0 && videoSize.height > 0
+    // Drive isVideoActive from mediaMetadata.isVideoSong rather than player.videoSize.
+    // videoSize is only non-zero after the surface is attached and frames start rendering,
+    // creating a chicken-and-egg problem — the surface never appears so videoSize never
+    // becomes non-zero. isVideoSong is set by the innertube response before playback starts,
+    // so it's available in time to show VideoPlayerSurface, which then lets ExoPlayer render.
+    val isVideoActive = videoPlaybackEnabled && (mediaMetadata?.isVideoSong == true)
     // ─────────────────────────────────────────────────────────────────────────
 
     var gradientColors by remember {

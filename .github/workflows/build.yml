@@ -2,15 +2,15 @@ name: Build APKs
 
 on:
   workflow_dispatch:
-  push:
-    branches: ["**"]
-    paths-ignore:
-      - "README.md"
-      - "fastlane/**"
-      - "assets/**"
-      - ".github/**/*.md"
-      - ".github/FUNDING.yml"
-      - ".github/ISSUE_TEMPLATE/**"
+#push:
+#  branches: ["**"]
+#  paths-ignore:
+#    - "README.md"
+#    - "fastlane/**"
+#    - "assets/**"
+#    - ".github/**/*.md"
+#    - ".github/FUNDING.yml"
+#    - ".github/ISSUE_TEMPLATE/**"
 
 permissions:
   contents: write
