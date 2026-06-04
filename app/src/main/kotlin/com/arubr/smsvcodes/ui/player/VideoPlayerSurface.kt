@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -32,34 +34,27 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arubr.smsvcodes.LocalPlayerConnection
 import com.arubr.smsvcodes.R
 
-/**
- * Embedded video surface for music-video playback.
- *
- * Renders ExoPlayer's video output inside a 16:9 box using a plain [SurfaceView]
- * (no dependency on media3-ui's PlayerView). A fullscreen button in the
- * bottom-right corner forces landscape and hides system bars; tapping again
- * restores portrait.
- *
- * Drop-in replacement for the album-art [AsyncImage] inside [BottomSheetPlayer]
- * when [isVideoActive] is true.
- */
 @Composable
 fun VideoPlayerSurface(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val player = playerConnection.player
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
     var isLandscapeForced by remember { mutableStateOf(false) }
+    var surfaceAttached by remember { mutableStateOf(false) }
 
-    // Restore orientation when this composable leaves composition.
     DisposableEffect(Unit) {
         onDispose {
             if (isLandscapeForced) {
@@ -71,6 +66,7 @@ fun VideoPlayerSurface(modifier: Modifier = Modifier) {
                     ctl.show(WindowInsetsCompat.Type.navigationBars())
                 }
             }
+            player.clearVideoSurface()
         }
     }
 
@@ -81,7 +77,6 @@ fun VideoPlayerSurface(modifier: Modifier = Modifier) {
             .aspectRatio(16f / 9f)
             .background(Color.Black),
     ) {
-        // ── Video surface (SurfaceView — no media3-ui needed) ─────────────────
         AndroidView(
             factory = { ctx ->
                 SurfaceView(ctx).apply {
@@ -89,22 +84,50 @@ fun VideoPlayerSurface(modifier: Modifier = Modifier) {
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
-                    // Attach ExoPlayer's video output to this surface.
                     player.setVideoSurfaceView(this)
+                    surfaceAttached = true
                 }
             },
             update = { view ->
-                // Re-attach if the player instance changed (e.g. service restart).
                 player.setVideoSurfaceView(view)
+                surfaceAttached = true
             },
-            onRelease = { _ ->
-                // Clear the surface so ExoPlayer doesn't hold a dead reference.
+            onRelease = {
                 player.clearVideoSurface()
+                surfaceAttached = false
             },
             modifier = Modifier.fillMaxSize(),
         )
 
-        // ── Fullscreen toggle ─────────────────────────────────────────────────
+        // ── Temporary debug overlay — remove once video is confirmed working ──
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(6.dp)
+                .background(Color.Black.copy(alpha = 0.7f))
+                .padding(4.dp),
+        ) {
+            val videoSize = player.videoSize
+            Text(
+                text = "isVideoSong: ${mediaMetadata?.isVideoSong}",
+                color = Color.White, fontSize = 10.sp, fontFamily = FontFamily.Monospace,
+            )
+            Text(
+                text = "videoSize: ${videoSize.width}x${videoSize.height}",
+                color = Color.White, fontSize = 10.sp, fontFamily = FontFamily.Monospace,
+            )
+            Text(
+                text = "surfaceAttached: $surfaceAttached",
+                color = Color.White, fontSize = 10.sp, fontFamily = FontFamily.Monospace,
+            )
+            Text(
+                text = "musicVideoType: ${mediaMetadata?.musicVideoType ?: "null"}",
+                color = Color.Yellow, fontSize = 10.sp, fontFamily = FontFamily.Monospace,
+            )
+        }
+        // ── End debug overlay ─────────────────────────────────────────────────
+
+        // Fullscreen toggle
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
@@ -120,7 +143,6 @@ fun VideoPlayerSurface(modifier: Modifier = Modifier) {
                     val activity = context as? Activity ?: return@clickable
                     val window = activity.window
                     val ctl = WindowCompat.getInsetsController(window, window.decorView)
-
                     if (isLandscapeForced) {
                         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         ctl.show(WindowInsetsCompat.Type.statusBars())
@@ -136,8 +158,6 @@ fun VideoPlayerSurface(modifier: Modifier = Modifier) {
                     }
                 },
         ) {
-            // R.drawable.fullscreen already exists in the project.
-            // Icon rotates 45° when in landscape to hint at "exit fullscreen".
             Icon(
                 painter = painterResource(R.drawable.fullscreen),
                 contentDescription = if (isLandscapeForced) "Exit fullscreen" else "Fullscreen",
