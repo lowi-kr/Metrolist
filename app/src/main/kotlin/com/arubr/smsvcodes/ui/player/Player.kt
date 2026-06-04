@@ -124,9 +124,6 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.Player.STATE_ENDED
-import androidx.media3.common.VideoSize
-import com.arubr.smsvcodes.constants.VideoPlaybackKey
-import com.arubr.smsvcodes.ui.player.VideoPlayerSurface
 import com.arubr.smsvcodes.constants.VideoPlaybackKey
 import com.arubr.smsvcodes.ui.player.VideoPlayerSurface
 import androidx.navigation.NavController
